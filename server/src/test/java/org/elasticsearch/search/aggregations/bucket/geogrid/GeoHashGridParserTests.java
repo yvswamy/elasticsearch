@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.search.aggregations.bucket.geogrid;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.common.xcontent.XContentParseException;
@@ -50,6 +51,17 @@ public class GeoHashGridParserTests extends ESTestCase {
         XContentParser stParser = createParser(JsonXContent.jsonXContent,
                 "{\"field\":\"my_loc\", \"type\":\"" + type + "\", \"precision\":\"" + precision +
                     "\", \"size\": \"500\", \"shard_size\": \"550\"}");
+        XContentParser.Token token = stParser.nextToken();
+        assertSame(XContentParser.Token.START_OBJECT, token);
+        // can create a factory
+        assertNotNull(GeoGridAggregationBuilder.parse("geohash_grid", stParser));
+    }
+
+    public void testParseOpenLocationCode() throws Exception {
+        int precision = RandomPicks.randomFrom(random(), GeoPlusCodeHandler.ALLOWED_LENGTHS);
+        XContentParser stParser = createParser(JsonXContent.jsonXContent,
+            "{\"field\":\"my_loc\", \"type\":\"pluscode\", \"precision\":\"" + precision +
+                "\", \"size\": \"500\", \"shard_size\": \"550\"}");
         XContentParser.Token token = stParser.nextToken();
         assertSame(XContentParser.Token.START_OBJECT, token);
         // can create a factory
@@ -126,6 +138,10 @@ public class GeoHashGridParserTests extends ESTestCase {
             switch (type) {
                 case GEOHASH:
                     expectedMsg = "Invalid geohash aggregation precision of 13. Must be between 1 and 12.";
+                    break;
+                case PLUSCODE:
+                    expectedMsg = "Invalid geohash pluscode aggregation precision of 15. Must be between 4 and 14, " +
+                        "and must be even if less than 8.";
                     break;
                 default:
                     throw new IllegalArgumentException("GeoHashType." + type.name() + " was not added to the test");
